@@ -14,6 +14,7 @@
 
 // pin setup
 const int button_pin = 3;
+const int piezo_pin = 4;
 const int led_pin = 5;      // must support PWM
 
 
@@ -32,6 +33,11 @@ void setup() {
   // set up button
   pinMode(button_pin, INPUT);
 
+  // set up piezo and chirp at startup
+  pinMode(piezo_pin, OUTPUT);
+  digitalWrite(piezo_pin, HIGH);
+  delay(10);
+  digitalWrite(piezo_pin, LOW);
 
   // set up and turn on LED (max brightness)
   pinMode(led_pin, OUTPUT);
