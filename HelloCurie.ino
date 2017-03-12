@@ -14,6 +14,7 @@
 
 // pin setup
 const int button_pin = 3;
+const int led_pin = 5;      // must support PWM
 
 
 rgb_lcd lcd;
@@ -30,6 +31,12 @@ void setup() {
 
   // set up button
   pinMode(button_pin, INPUT);
+
+
+  // set up and turn on LED (max brightness)
+  pinMode(led_pin, OUTPUT);
+  analogWrite(led_pin, 255);
+  
   
   // set up LCD rows/cols
   lcd.begin(16,2);
@@ -44,10 +51,13 @@ void loop() {
   // set cursor to beginning of second (numbered from 0) row
   lcd.setCursor(0, 1);
 
-  // randomize backlight while pressed
+  // randomize backlight and switch off LED while pressed
   // TODO: debounce!
   if (digitalRead(button_pin)) {
     SetRandomBacklightColor();
+    analogWrite(led_pin, 0);
+  } else {
+    analogWrite(led_pin, 255);
   }
 
   lcd.print(millis() / 1000);
