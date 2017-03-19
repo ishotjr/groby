@@ -59,8 +59,8 @@ void setup() {
   blePeripheral.addAttribute(blueCharacteristic);
 
   redCharacteristic.setValue(color_r);
-  greenCharacteristic.setValue(color_r);
-  blueCharacteristic.setValue(color_r);
+  greenCharacteristic.setValue(color_g);
+  blueCharacteristic.setValue(color_b);
 
   blePeripheral.begin();
 
@@ -91,7 +91,7 @@ void setup() {
 
   SetRandomBacklightColor();
   
-  lcd.print("Hello, Curie!");
+  lcd.print("Hi, Curie!");
 }
 
 void loop() {
@@ -141,6 +141,17 @@ void loop() {
   lcd.setCursor(12, 1);
   lcd.print(az);
 
+
+  // get temp via IMU due to issues with Grove sensor
+  // see also https://github.com/01org/corelibs-arduino101/blob/master/libraries/CurieIMU/src/BMI160.cpp#L2302
+  float temperature = CurieIMU.readTemperature();
+  float temperature_c = (temperature / 512.0) + 23;
+  float temperature_f = temperature_c * 9/5 + 32;
+
+  lcd.setCursor(11, 0);
+  lcd.print(temperature_f);
+
+  
   delay(100);
 }
 
