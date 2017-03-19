@@ -38,7 +38,7 @@ BLECharacteristic messageCharacteristic("19B10014-E8F2-537E-4F6C-D104768A1214", 
 
 rgb_lcd lcd;
 
-static byte color_r = 255;
+static byte color_r = 0;
 static byte color_g = 0;
 static byte color_b = 0;
 
@@ -60,11 +60,10 @@ void setup() {
   blePeripheral.addAttribute(blueCharacteristic);
   blePeripheral.addAttribute(messageCharacteristic);
 
-  redCharacteristic.setValue(color_r);
-  greenCharacteristic.setValue(color_g);
-  blueCharacteristic.setValue(color_b);
+  // (setting of RGB characteristic values moved to UpdateBacklightColor() )
 
-  unsigned char buffer[20] = "test";
+
+  unsigned char buffer[20] = "Hi, Curie!";
   messageCharacteristic.setValue(buffer, 20); // TODO: actual value
 
   blePeripheral.begin();
@@ -96,7 +95,7 @@ void setup() {
 
   SetRandomBacklightColor();
   
-  lcd.print("Hi, Curie!");
+  lcd.print((const char *) buffer);
 }
 
 void loop() {
@@ -185,7 +184,12 @@ void loop() {
 }
 
 void UpdateBacklightColor() {
-  
+
+  // update BLE read values
+  redCharacteristic.setValue(color_r);
+  greenCharacteristic.setValue(color_g);
+  blueCharacteristic.setValue(color_b);
+    
   // set LCD backlight color
   lcd.setRGB(color_r, color_g, color_b);
 }
