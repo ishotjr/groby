@@ -11,8 +11,13 @@
 #include <Wire.h>
 #include "rgb_lcd.h"
 
+// for log
+#include <math.h>
+
 
 // pin setup
+// NOTE: A0 reserved for randomSeed()
+const int thermistor_pin = A1;
 const int button_pin = 3;
 const int piezo_pin = 4;
 const int led_pin = 5;      // must support PWM
@@ -66,7 +71,32 @@ void loop() {
     analogWrite(led_pin, 255);
   }
 
-  lcd.print(millis() / 1000);
+  //lcd.print(millis() / 1000);
+
+  // TODO: fix calculation; 
+/*
+    sensor_value_tmp = (float)(average_value / 4095 * 2.95 * 2 / 3.3 * 1023)
+    resistance = (float)(1023 - sensor_value_tmp) * 10000 / sensor_value_tmp
+    temperature = round((float)(1 / (math.log(resistance / 10000) / bValue + 1 / 298.15) - 273.15), 2)
+ */
+ // TODO: move to own fn etc.
+  float thermistor_value = analogRead(thermistor_pin);
+  int b_value = 4250; //4275; //4200; //4250;
+  // TODO: 3.3 or 5.0?
+  float x = (float)(thermistor_value / 4095 * 2.95 * 2 / 3.3 * 1023);
+  //float x = (float)(thermistor_value / 4095 * 2.95 * 2 / 5.0 * 1023);
+  
+  float resistance = (float)(1023 - x) * 10000 / x;
+  float temperature_c = (float)(1 / (log(resistance / 10000) / b_value + 1 / 298.15) - 273.15);
+  //float resistance = (float)(1023 - x) * 100000 / x;
+  //float temperature_c = (float)(1 / (log(resistance / 100000) / b_value + 1 / 298.15) - 273.15);
+
+  //lcd.print(temperature_c);
+  lcd.print(thermistor_value);
+
+  lcd.setCursor(8, 1);
+  float temperature_f = temperature_c * 9/5 + 32;
+  lcd.print(temperature_f);
 
   delay(100);
 }
