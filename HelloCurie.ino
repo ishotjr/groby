@@ -34,6 +34,7 @@ BLEService lcdService("19B10010-E8F2-537E-4F6C-D104768A1214");
 BLEUnsignedCharCharacteristic redCharacteristic("19B10011-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
 BLEUnsignedCharCharacteristic greenCharacteristic("19B10012-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
 BLEUnsignedCharCharacteristic blueCharacteristic("19B10013-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
+BLECharacteristic messageCharacteristic("19B10014-E8F2-537E-4F6C-D104768A1214", BLEWrite, 20); // TODO: const vs. hard-coded
 
 rgb_lcd lcd;
 
@@ -57,10 +58,14 @@ void setup() {
   blePeripheral.addAttribute(redCharacteristic);
   blePeripheral.addAttribute(greenCharacteristic);
   blePeripheral.addAttribute(blueCharacteristic);
+  blePeripheral.addAttribute(messageCharacteristic);
 
   redCharacteristic.setValue(color_r);
   greenCharacteristic.setValue(color_g);
   blueCharacteristic.setValue(color_b);
+
+  unsigned char buffer[20] = "test";
+  messageCharacteristic.setValue(buffer, 20); // TODO: actual value
 
   blePeripheral.begin();
 
@@ -126,6 +131,29 @@ void loop() {
     color_b = blueCharacteristic.value();
     UpdateBacklightColor();
   }
+  
+  if (messageCharacteristic.written()) {
+    // TODO: error checking?
+    size_t message_length = messageCharacteristic.valueLength();
+    // TODO: 17 -> const
+    // note that string literal *includes* \0 termination
+    unsigned char message[17] = "                "; // cheap padding for now
+    char message_formatted[17];
+
+    // it's possible to receive messages longer than the LCD width
+    if (message_length > 16) {
+      // truncate for now
+      // TODO: handle longer messages via scrolling later...
+      message_length = 16;
+    };
+
+    // overwrite 16 or fewer chars (remaining stay ' ' to overwrite old on LCD)
+    memcpy(message, messageCharacteristic.value(), message_length);
+
+    lcd.setCursor(0, 0);
+    lcd.print((const char *) message);
+    //lcd.print((const char *) message_formatted);
+  }
 
   //lcd.print(millis() / 1000);
   
@@ -148,8 +176,9 @@ void loop() {
   float temperature_c = (temperature / 512.0) + 23;
   float temperature_f = temperature_c * 9/5 + 32;
 
-  lcd.setCursor(11, 0);
-  lcd.print(temperature_f);
+  // TODO: restore
+  //lcd.setCursor(11, 0);
+  //lcd.print(temperature_f);
 
   
   delay(100);
