@@ -1,11 +1,14 @@
 /*
- * -----------------------------------------------------------------------------
- *
- * HelloCurie - getting to know the Arduino 101!
- * 
- * -----------------------------------------------------------------------------
- *
- */
+   -----------------------------------------------------------------------------
+
+   HelloCurie - getting to know the Arduino 101!
+
+   -----------------------------------------------------------------------------
+
+*/
+
+// for RTC
+#include <CurieTime.h>
 
 // for Curie Bluetooth Low Energy (BLE)
 #include <CurieBLE.h>
@@ -49,6 +52,10 @@ void setup() {
   randomSeed(analogRead(0));
 
 
+  // set RTC to midnight on 20170101 :tada:
+  setTime(00, 00, 00, 1, 1, 2017);
+  // TODO: add ability to set via BLE
+
   // initialize Curie BLE, services and characteristics
   blePeripheral.setLocalName("HelloCurie");
   // set advertised service UUID
@@ -74,7 +81,7 @@ void setup() {
 
   // set accelerometer range to 2G
   CurieIMU.setAccelerometerRange(2);
-  
+
 
   // set up button
   pinMode(button_pin, INPUT);
@@ -88,20 +95,20 @@ void setup() {
   // set up and turn on LED (max brightness)
   pinMode(led_pin, OUTPUT);
   analogWrite(led_pin, 255);
-  
-  
+
+
   // set up LCD rows/cols
-  lcd.begin(16,2);
+  lcd.begin(16, 2);
 
   SetRandomBacklightColor();
-  
+
   lcd.print((const char *) buffer);
 }
 
 void loop() {
   // poll for BLE events
   blePeripheral.poll();
-  
+
   // set cursor to beginning of second (numbered from 0) row
   lcd.setCursor(0, 1);
 
@@ -130,7 +137,7 @@ void loop() {
     color_b = blueCharacteristic.value();
     UpdateBacklightColor();
   }
-  
+
   if (messageCharacteristic.written()) {
     // TODO: error checking?
     size_t message_length = messageCharacteristic.valueLength();
@@ -155,7 +162,7 @@ void loop() {
   }
 
   //lcd.print(millis() / 1000);
-  
+
   float ax, ay, az;   //scaled accelerometer values
 
   // read accelerometer measurements from device, scaled to the configured range
@@ -173,13 +180,23 @@ void loop() {
   // see also https://github.com/01org/corelibs-arduino101/blob/master/libraries/CurieIMU/src/BMI160.cpp#L2302
   float temperature = CurieIMU.readTemperature();
   float temperature_c = (temperature / 512.0) + 23;
-  float temperature_f = temperature_c * 9/5 + 32;
+  float temperature_f = temperature_c * 9 / 5 + 32;
 
   // TODO: restore
   //lcd.setCursor(11, 0);
   //lcd.print(temperature_f);
 
-  
+  // quick RTC demo
+  char hh_mm[6] = "HH:MM";
+  // toggle ":" every second (blink)
+  lcd.setCursor(11, 0);
+  if (second() % 2) {
+    sprintf(hh_mm, "%02d:%02d", hour(), minute());
+  } else {
+    sprintf(hh_mm, "%02d %02d", hour(), minute());
+  }
+  lcd.print(hh_mm);
+
   delay(100);
 }
 
@@ -189,7 +206,7 @@ void UpdateBacklightColor() {
   redCharacteristic.setValue(color_r);
   greenCharacteristic.setValue(color_g);
   blueCharacteristic.setValue(color_b);
-    
+
   // set LCD backlight color
   lcd.setRGB(color_r, color_g, color_b);
 }
@@ -199,7 +216,7 @@ void SetRandomBacklightColor() {
   color_r = random(256);
   color_g = random(256);
   color_b = random(256);
-  
+
   UpdateBacklightColor();
 }
 
