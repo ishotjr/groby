@@ -38,6 +38,7 @@ BLEUnsignedCharCharacteristic redCharacteristic("19B10011-E8F2-537E-4F6C-D104768
 BLEUnsignedCharCharacteristic greenCharacteristic("19B10012-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
 BLEUnsignedCharCharacteristic blueCharacteristic("19B10013-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
 BLECharacteristic messageCharacteristic("19B10014-E8F2-537E-4F6C-D104768A1214", BLEWrite, 20); // TODO: const vs. hard-coded
+BLEUnsignedIntCharacteristic timeCharacteristic("19B10015-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
 
 rgb_lcd lcd;
 
@@ -52,9 +53,15 @@ void setup() {
   randomSeed(analogRead(0));
 
 
+  // DON'T set RTC - either it's already set because power stayed on
+  // between sketches, or we'll default to 0 and set via BLE later
+
+  // TODO: remove
   // set RTC to midnight on 20170101 :tada:
-  setTime(00, 00, 00, 1, 1, 2017);
-  // TODO: add ability to set via BLE
+  //setTime(00, 00, 00, 1, 1, 2017);
+  // epoch time (default appears to be 0 if not set)
+  //setTime(1490315941);
+  
 
   // initialize Curie BLE, services and characteristics
   blePeripheral.setLocalName("HelloCurie");
@@ -66,6 +73,7 @@ void setup() {
   blePeripheral.addAttribute(greenCharacteristic);
   blePeripheral.addAttribute(blueCharacteristic);
   blePeripheral.addAttribute(messageCharacteristic);
+  blePeripheral.addAttribute(timeCharacteristic);
 
   // (setting of RGB characteristic values moved to UpdateBacklightColor() )
 
@@ -161,6 +169,13 @@ void loop() {
     //lcd.print((const char *) message_formatted);
   }
 
+  // update RTC if new epoch time received
+  if (timeCharacteristic.written()) {
+    // TODO: error checking?
+    setTime(timeCharacteristic.value());
+  }
+  
+
   //lcd.print(millis() / 1000);
 
   float ax, ay, az;   //scaled accelerometer values
@@ -190,12 +205,36 @@ void loop() {
   char hh_mm[6] = "HH:MM";
   // toggle ":" every second (blink)
   lcd.setCursor(11, 0);
-  if (second() % 2) {
-    sprintf(hh_mm, "%02d:%02d", hour(), minute());
+
+  // override w/ "blinking VCR" if not set
+  // we'll define "not set" as < midnight on January 1st, 2000
+  // (since it'll take a while to get there from 0!)
+  if (now() < 946684800) {
+    if (second() % 2) {
+      sprintf(hh_mm, "%02d:%02d", 12, 0);
+    } else {
+      sprintf(hh_mm, "  :  ");
+    }    
   } else {
-    sprintf(hh_mm, "%02d %02d", hour(), minute());
+    // TODO: time zones, DST, etc.
+    if (second() % 2) {
+      sprintf(hh_mm, "%02d:%02d", hour(), minute());
+    } else {
+      sprintf(hh_mm, "%02d %02d", hour(), minute());
+    }
   }
+  
   lcd.print(hh_mm);
+
+  // TODO: remove
+  // epoch time
+  lcd.setCursor(0, 0);
+  lcd.print(now());
+
+
+  // update RTC characteristic
+  timeCharacteristic.setValue(now());
+  // TODO: is this expensive? if so, write-only w/b fine...
 
   delay(100);
 }
