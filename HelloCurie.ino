@@ -1,7 +1,16 @@
 /*
    -----------------------------------------------------------------------------
 
-   HelloCurie - getting to know the Arduino 101!
+                                       /\ \                 
+                        __   _ __   ___\ \ \____  __  __    
+                      /'_ `\/\`'__\/ __`\ \ '__`\/\ \/\ \   
+                     /\ \L\ \ \ \//\ \L\ \ \ \L\ \ \ \_\ \  
+                     \ \____ \ \_\\ \____/\ \_,__/\/`____ \ 
+                      \/___L\ \/_/ \/___/  \/___/  `/___/> \
+                        /\____/                       /\___/
+                        \_/__/                        \/__/ 
+
+         an Arduino 101 + grove-based Personal Information Display! (^-^)b      
 
    -----------------------------------------------------------------------------
 
@@ -78,7 +87,7 @@ void setup() {
   // (setting of RGB characteristic values moved to UpdateBacklightColor() )
 
 
-  unsigned char buffer[20] = "Hi, Curie!";
+  unsigned char buffer[20] = "";
   messageCharacteristic.setValue(buffer, 20); // TODO: actual value
 
   blePeripheral.begin();
@@ -114,6 +123,16 @@ void setup() {
 }
 
 void loop() {
+
+  /*
+        _                   _   
+       (_)_ __  _ __  _   _| |_ 
+       | | '_ \| '_ \| | | | __|
+       | | | | | |_) | |_| | |_ 
+       |_|_| |_| .__/ \__,_|\__|
+               |_|      
+  */
+  
   // poll for BLE events
   blePeripheral.poll();
 
@@ -176,7 +195,93 @@ void loop() {
   }
   
 
-  //lcd.print(millis() / 1000);
+  /*
+                    _               _   
+         ___  _   _| |_ _ __  _   _| |_ 
+        / _ \| | | | __| '_ \| | | | __|
+       | (_) | |_| | |_| |_) | |_| | |_ 
+        \___/ \__,_|\__| .__/ \__,_|\__|
+                       |_|       
+  */
+  
+  // TODO: add cycling through states via button
+  // TODO: add cycling through states over time
+  
+//  ShowDebug();
+  ShowHome();
+//  ShowWeather();
+//  ShowTweets();
+//  ShowNotifications();
+  
+
+  // update RTC characteristic
+  timeCharacteristic.setValue(now());
+  // TODO: is this expensive? if so, write-only w/b fine...
+
+  delay(100);
+}
+
+
+void ShowHome() {
+
+  // green background
+  
+  color_r = 31;
+  color_g = 255;
+  color_b = 31;
+
+  UpdateBacklightColor();
+
+  // TODO: refactor
+
+  // quick RTC demo
+  char hh_mm[6] = "HH:MM";
+  // toggle ":" every second (blink)
+  lcd.setCursor(11, 0);
+
+  // override w/ "blinking VCR" if not set
+  // we'll define "not set" as < midnight on January 1st, 2000
+  // (since it'll take a while to get there from 0!)
+  if (now() < 946684800) {
+    if (second() % 2) {
+      sprintf(hh_mm, "%02d:%02d", 12, 0);
+    } else {
+      sprintf(hh_mm, "  :  ");
+    }    
+  } else {
+    // TODO: time zones, DST, etc.
+    if (second() % 2) {
+      sprintf(hh_mm, "%02d:%02d", hour(), minute());
+    } else {
+      sprintf(hh_mm, "%02d %02d", hour(), minute());
+    }
+  }
+  
+  lcd.print(hh_mm);
+
+  // date
+  char yyyymmdd[11] = "YYYY.MM.DD";
+  lcd.setCursor(0, 0);
+  if (now() > 946684800) {
+    sprintf(yyyymmdd, "%04d.%02d.%02d", year(), month(), day());
+  }
+  lcd.print(yyyymmdd);
+  
+
+  lcd.setCursor(0, 1);
+  lcd.print("[ groby ]");
+  
+  lcd.setCursor(10, 1);
+  if (second() % 2) {
+    lcd.print("(^-^)b");
+  }
+  else {
+    lcd.print("(-_-)o");
+  }
+
+}
+
+void ShowDebug() {
 
   float ax, ay, az;   //scaled accelerometer values
 
@@ -230,13 +335,6 @@ void loop() {
   // epoch time
   lcd.setCursor(0, 0);
   lcd.print(now());
-
-
-  // update RTC characteristic
-  timeCharacteristic.setValue(now());
-  // TODO: is this expensive? if so, write-only w/b fine...
-
-  delay(100);
 }
 
 void UpdateBacklightColor() {
