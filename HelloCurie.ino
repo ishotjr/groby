@@ -55,6 +55,9 @@ static byte color_r = 0;
 static byte color_g = 0;
 static byte color_b = 0;
 
+static byte current_state = 0;
+static byte last_state = 0;
+
 
 void setup() {
 
@@ -205,11 +208,21 @@ void loop() {
   */
   
   // TODO: add cycling through states via button
-  // TODO: add cycling through states over time
-  
-//  ShowDebug();
-  ShowHome();
-//  ShowWeather();
+
+  // cycle through states over time
+  if (second() < 20) {
+    ShowHome();    
+  } else if (second() < 40) {
+    ShowWeather();  
+  } else {
+    ShowDebug();  
+  }
+
+  // clear LCD when transitioning between states
+  if (current_state != last_state) {
+    lcd.clear();
+  }
+
 //  ShowTweets();
 //  ShowNotifications();
   
@@ -223,6 +236,8 @@ void loop() {
 
 
 void ShowHome() {
+  last_state = current_state;
+  current_state = 0;
 
   // green background
   
@@ -278,10 +293,55 @@ void ShowHome() {
   else {
     lcd.print("(-_-)o");
   }
-
 }
 
+
+
+void ShowWeather() {
+  last_state = current_state;
+  current_state = 1;
+
+  // green background
+  
+  color_r = 255;
+  color_g = 69;
+  color_b = 0;
+
+  UpdateBacklightColor();
+
+  // INDOOR
+
+  // get temp via IMU due to issues with Grove sensor
+  // see also https://github.com/01org/corelibs-arduino101/blob/master/libraries/CurieIMU/src/BMI160.cpp#L2302
+  float temperature = CurieIMU.readTemperature();
+  float temperature_c = (temperature / 512.0) + 23;
+  float temperature_f = temperature_c * 9 / 5 + 32;
+
+  char indoor_f[5] = "DD F";
+  lcd.setCursor(0, 0);
+  sprintf(indoor_f, "%02.0f%cF", temperature_f, (char)0b11011111); // °
+  // see 12. Font Table in https://seeeddoc.github.io/Grove-LCD_RGB_Backlight/res/JHD1214Y_YG_1.0.pdf for supported chars
+  lcd.print(indoor_f);
+
+  // OUTDOOR
+  char outdoor_f[5] = "DD F";
+  lcd.setCursor(12, 0);
+  sprintf(outdoor_f, "84%cF", (char)0b11011111); // °
+  lcd.print(outdoor_f);
+  
+  lcd.setCursor(0, 1);
+  lcd.print("Overcast   (-_-)");
+}
+
+
 void ShowDebug() {
+  last_state = current_state;
+  current_state = 255;
+
+  // re-randomize backlight on first run
+  if (current_state != last_state) {
+    SetRandomBacklightColor();
+  }
 
   float ax, ay, az;   //scaled accelerometer values
 
