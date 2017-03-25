@@ -69,8 +69,7 @@ enum ui_states {
   DEBUG = 255
 };
 // total "normal" states i.e. n/i ALERT or DEBUG
-// TODO: restore to 4 once TWEETS and NOTIFICATIONS are implemented
-static const byte ui_state_count = 2; //4;
+static const byte ui_state_count = 4;
 
 // initial UI state is home
 static byte current_state = HOME;
@@ -94,7 +93,7 @@ void setup() {
   
 
   // initialize Curie BLE, services and characteristics
-  blePeripheral.setLocalName("HelloCurie");
+  blePeripheral.setLocalName("groby :)");
   // set advertised service UUID
   blePeripheral.setAdvertisedServiceUuid(lcdService.uuid());
 
@@ -145,6 +144,7 @@ void setup() {
   // kick off ui state cycling
   CurieTimerOne.start(20 * 1000000, &ui_cycle_isr); // microseconds!
 }
+
 
 void loop() {
 
@@ -252,9 +252,9 @@ void ui_cycle_isr() {
   }
   // clear LCD when transitioning between states
   // TODO: this if is redundant now, right? (in fact, last_state as a whole...?)
-  if (current_state != last_state) {
+  //if (current_state != last_state) {
     lcd.clear();
-  }
+  //}
 
 }
 
@@ -270,10 +270,10 @@ void ShowState(byte ui_state) {
       ShowWeather();
       break;
     case TWEETS:
-      //ShowTweets();
+      ShowTweets();
       break;
     case NOTIFICATIONS:
-      //ShowNotifications();
+      ShowNotifications();
       break;
 
     default:
@@ -281,6 +281,7 @@ void ShowState(byte ui_state) {
   }
   
 }
+
 
 void ShowHome() {
   last_state = current_state;
@@ -343,7 +344,6 @@ void ShowHome() {
 }
 
 
-
 void ShowWeather() {
   last_state = current_state;
   current_state = WEATHER;
@@ -378,6 +378,46 @@ void ShowWeather() {
   
   lcd.setCursor(0, 1);
   lcd.print("Overcast   (-_-)");
+}
+
+
+void ShowTweets() {
+  last_state = current_state;
+  current_state = TWEETS;
+
+  // Twitter blue background (#00aced)
+  
+  color_r = 0x00;
+  color_g = 0xac;
+  color_b = 0xed;
+
+  UpdateBacklightColor();
+
+  lcd.setCursor(0, 0);
+  lcd.print("@ishjr        2m");
+  lcd.setCursor(0, 1);
+  lcd.print("Hackster rocks! ");
+}
+
+
+void ShowNotifications() {
+  last_state = current_state;
+  current_state = NOTIFICATIONS;
+
+  // red background
+  
+  color_r = 0xff;
+  color_g = 0x00;
+  color_b = 0x00;
+
+  UpdateBacklightColor();
+
+  // TODO: custom chars for email etc. w/b cool!
+  
+  lcd.setCursor(0, 0);
+  lcd.print("[E] Adam Benzion");
+  lcd.setCursor(0, 1);
+  lcd.print("Congratulations!");
 }
 
 
