@@ -19,6 +19,9 @@
 // for RTC
 #include <CurieTime.h>
 
+// for Timer 1 / interrupts
+#include "CurieTimerOne.h"
+
 // for Curie Bluetooth Low Energy (BLE)
 #include <CurieBLE.h>
 
@@ -55,8 +58,23 @@ static byte color_r = 0;
 static byte color_g = 0;
 static byte color_b = 0;
 
-static byte current_state = 0;
-static byte last_state = 0;
+
+//enum ui_states byte {
+enum ui_states {
+  HOME = 0,
+  WEATHER = 1,
+  TWEETS = 2,
+  NOTIFICATIONS = 3,
+  ALERT = 127,
+  DEBUG = 255
+};
+// total "normal" states i.e. n/i ALERT or DEBUG
+// TODO: restore to 4 once TWEETS and NOTIFICATIONS are implemented
+static const byte ui_state_count = 2; //4;
+
+// initial UI state is home
+static byte current_state = HOME;
+static byte last_state = HOME;
 
 
 void setup() {
@@ -123,6 +141,9 @@ void setup() {
   SetRandomBacklightColor();
 
   lcd.print((const char *) buffer);
+
+  // kick off ui state cycling
+  CurieTimerOne.start(20 * 1000000, &ui_cycle_isr); // microseconds!
 }
 
 void loop() {
@@ -207,25 +228,12 @@ void loop() {
                        |_|       
   */
   
-  // TODO: add cycling through states via button
+  // TODO: add advancing of UI state via button
 
   // cycle through states over time
-  if (second() < 20) {
-    ShowHome();    
-  } else if (second() < 40) {
-    ShowWeather();  
-  } else {
-    ShowDebug();  
-  }
+  // (moved to Timer 1 / callback!)
 
-  // clear LCD when transitioning between states
-  if (current_state != last_state) {
-    lcd.clear();
-  }
-
-//  ShowTweets();
-//  ShowNotifications();
-  
+  ShowState(current_state);
 
   // update RTC characteristic
   timeCharacteristic.setValue(now());
@@ -235,9 +243,48 @@ void loop() {
 }
 
 
+// callback function for incrementing UI state 
+void ui_cycle_isr() {
+
+  current_state++;
+  if (current_state > (ui_state_count - 1)) {
+    current_state = 0;
+  }
+  // clear LCD when transitioning between states
+  // TODO: this if is redundant now, right? (in fact, last_state as a whole...?)
+  if (current_state != last_state) {
+    lcd.clear();
+  }
+
+}
+
+// paramaterized access to UI states via ui_states value
+// (for easier sequential cycling etc.)
+void ShowState(byte ui_state) {
+
+  switch (ui_state) {
+    case HOME:
+      ShowHome();
+      break;
+    case WEATHER:
+      ShowWeather();
+      break;
+    case TWEETS:
+      //ShowTweets();
+      break;
+    case NOTIFICATIONS:
+      //ShowNotifications();
+      break;
+
+    default:
+      ShowDebug();
+  }
+  
+}
+
 void ShowHome() {
   last_state = current_state;
-  current_state = 0;
+  current_state = HOME;
 
   // green background
   
@@ -299,7 +346,7 @@ void ShowHome() {
 
 void ShowWeather() {
   last_state = current_state;
-  current_state = 1;
+  current_state = WEATHER;
 
   // green background
   
@@ -336,7 +383,7 @@ void ShowWeather() {
 
 void ShowDebug() {
   last_state = current_state;
-  current_state = 255;
+  current_state = DEBUG;
 
   // re-randomize backlight on first run
   if (current_state != last_state) {
