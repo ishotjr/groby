@@ -39,6 +39,7 @@
 // pin setup
 // NOTE: A0 reserved for randomSeed()
 const int thermistor_pin = A1;
+// all digital pins are usable for interrupts on 101, but 3 also works for Uno etc. so that's nice
 const int button_pin = 3;
 const int piezo_pin = 4;
 const int led_pin = 5;      // must support PWM
@@ -74,6 +75,9 @@ static const byte ui_state_count = 4;
 // initial UI state is home
 static byte current_state = HOME;
 static byte last_state = HOME;
+
+// for software button debounce in ISR
+static unsigned long last_interrupt = 0;
 
 
 void setup() {
@@ -143,6 +147,11 @@ void setup() {
 
   // kick off ui state cycling
   CurieTimerOne.start(20 * 1000000, &ui_cycle_isr); // microseconds!
+
+  // attach interrupt on button pin
+  // TODO: should maybe not share ui_cycle_isr() and reset timer on press IRL, but this is fine for PoC!
+  attachInterrupt(button_pin, ui_cycle_isr, CHANGE);
+  // interrupt number = pin number on the 101
 }
 
 
@@ -162,15 +171,6 @@ void loop() {
 
   // set cursor to beginning of second (numbered from 0) row
   lcd.setCursor(0, 1);
-
-  // randomize backlight and switch off LED while pressed
-  // TODO: debounce!
-  if (digitalRead(button_pin)) {
-    SetRandomBacklightColor();
-    analogWrite(led_pin, 0);
-  } else {
-    analogWrite(led_pin, 255);
-  }
 
   // TODO: make BLE/button exclusive/prioritize one or the other?
   if (redCharacteristic.written()) {
@@ -246,15 +246,23 @@ void loop() {
 // callback function for incrementing UI state 
 void ui_cycle_isr() {
 
-  current_state++;
-  if (current_state > (ui_state_count - 1)) {
-    current_state = 0;
+  // software debounce for when button triggers interrupt
+  // (no real value in anything faster)
+  if ((millis() - last_interrupt) > 500) {
+        
+    current_state++;
+    if (current_state > (ui_state_count - 1)) {
+      current_state = 0;
+    }
+    // clear LCD when transitioning between states
+    // TODO: this if is redundant now, right? (in fact, last_state as a whole...?)
+    //if (current_state != last_state) {
+      lcd.clear();
+    //}
+  
+    // not sure how long lcd.clear() takes (it's slow) but not worth counting that against interrupt time
+    last_interrupt = millis();
   }
-  // clear LCD when transitioning between states
-  // TODO: this if is redundant now, right? (in fact, last_state as a whole...?)
-  //if (current_state != last_state) {
-    lcd.clear();
-  //}
 
 }
 
