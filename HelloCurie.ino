@@ -103,10 +103,15 @@ void setup() {
 
   blePeripheral.addAttribute(lcdService);
   blePeripheral.addAttribute(redCharacteristic);
+  redCharacteristic.setEventHandler(BLEWritten, red_characteristic_callback);
   blePeripheral.addAttribute(greenCharacteristic);
+  greenCharacteristic.setEventHandler(BLEWritten, green_characteristic_callback);
   blePeripheral.addAttribute(blueCharacteristic);
+  blueCharacteristic.setEventHandler(BLEWritten, blue_characteristic_callback);
   blePeripheral.addAttribute(messageCharacteristic);
+  messageCharacteristic.setEventHandler(BLEWritten, message_characteristic_callback);
   blePeripheral.addAttribute(timeCharacteristic);
+  timeCharacteristic.setEventHandler(BLEWritten, time_characteristic_callback);
 
   // (setting of RGB characteristic values moved to UpdateBacklightColor() )
 
@@ -165,59 +170,12 @@ void loop() {
        |_|_| |_| .__/ \__,_|\__|
                |_|      
   */
+
+  // wow - this is pretty empty now that everything's done via callbacks! :D
   
   // poll for BLE events
   blePeripheral.poll();
 
-  // set cursor to beginning of second (numbered from 0) row
-  lcd.setCursor(0, 1);
-
-  // TODO: make BLE/button exclusive/prioritize one or the other?
-  if (redCharacteristic.written()) {
-    // TODO: error checking?
-    color_r = redCharacteristic.value();
-    UpdateBacklightColor();
-  }
-  if (greenCharacteristic.written()) {
-    // TODO: error checking?
-    color_g = greenCharacteristic.value();
-    UpdateBacklightColor();
-  }
-  if (blueCharacteristic.written()) {
-    // TODO: error checking?
-    color_b = blueCharacteristic.value();
-    UpdateBacklightColor();
-  }
-
-  if (messageCharacteristic.written()) {
-    // TODO: error checking?
-    size_t message_length = messageCharacteristic.valueLength();
-    // TODO: 17 -> const
-    // note that string literal *includes* \0 termination
-    unsigned char message[17] = "                "; // cheap padding for now
-    char message_formatted[17];
-
-    // it's possible to receive messages longer than the LCD width
-    if (message_length > 16) {
-      // truncate for now
-      // TODO: handle longer messages via scrolling later...
-      message_length = 16;
-    };
-
-    // overwrite 16 or fewer chars (remaining stay ' ' to overwrite old on LCD)
-    memcpy(message, messageCharacteristic.value(), message_length);
-
-    lcd.setCursor(0, 0);
-    lcd.print((const char *) message);
-    //lcd.print((const char *) message_formatted);
-  }
-
-  // update RTC if new epoch time received
-  if (timeCharacteristic.written()) {
-    // TODO: error checking?
-    setTime(timeCharacteristic.value());
-  }
-  
 
   /*
                     _               _   
@@ -227,11 +185,6 @@ void loop() {
         \___/ \__,_|\__| .__/ \__,_|\__|
                        |_|       
   */
-  
-  // TODO: add advancing of UI state via button
-
-  // cycle through states over time
-  // (moved to Timer 1 / callback!)
 
   ShowState(current_state);
 
@@ -242,6 +195,63 @@ void loop() {
   delay(100);
 }
 
+
+
+// *** BLE callbacks ***
+
+void red_characteristic_callback(BLECentral &central, BLECharacteristic &characteristic) {
+  
+    // TODO: error checking?
+    color_r = redCharacteristic.value();
+    UpdateBacklightColor();
+}
+void green_characteristic_callback(BLECentral &central, BLECharacteristic &characteristic) {
+  
+    // TODO: error checking?
+    color_g = greenCharacteristic.value();
+    UpdateBacklightColor();
+}
+void blue_characteristic_callback(BLECentral &central, BLECharacteristic &characteristic) {
+  
+    // TODO: error checking?
+    color_b = blueCharacteristic.value();
+    UpdateBacklightColor();
+}
+
+void message_characteristic_callback(BLECentral &central, BLECharacteristic &characteristic) {
+  
+  // TODO: error checking?
+  size_t message_length = messageCharacteristic.valueLength();
+  // TODO: 17 -> const
+  // note that string literal *includes* \0 termination
+  unsigned char message[17] = "                "; // cheap padding for now
+  char message_formatted[17];
+
+  // it's possible to receive messages longer than the LCD width
+  if (message_length > 16) {
+    // truncate for now
+    // TODO: handle longer messages via scrolling later...
+    // NOTE: characteristic limit is 20 bytes though...
+    message_length = 16;
+  };
+
+  // overwrite 16 or fewer chars (remaining stay ' ' to overwrite old on LCD)
+  memcpy(message, messageCharacteristic.value(), message_length);
+
+  lcd.setCursor(0, 0);
+  lcd.print((const char *) message);
+  //lcd.print((const char *) message_formatted);
+}
+
+void time_characteristic_callback(BLECentral &central, BLECharacteristic &characteristic) {
+  
+  // TODO: error checking?
+  setTime(timeCharacteristic.value());
+}
+
+
+
+// *** UI states and management ***
 
 // callback function for incrementing/setting UI state 
 void ui_cycle_isr() {
@@ -429,8 +439,11 @@ void ShowNotifications() {
 
 void ShowDebug() {
   
-  // re-randomize backlight on EVERY run
-  SetRandomBacklightColor();
+  // re-randomize backlight on first run
+  if (current_state != last_state) {
+    SetRandomBacklightColor();
+    last_state = current_state; // special usage for this state
+  }
 
   float ax, ay, az;   //scaled accelerometer values
 
