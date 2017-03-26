@@ -52,6 +52,15 @@ BLEUnsignedCharCharacteristic greenCharacteristic("19B10012-E8F2-537E-4F6C-D1047
 BLEUnsignedCharCharacteristic blueCharacteristic("19B10013-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
 BLECharacteristic messageCharacteristic("19B10014-E8F2-537E-4F6C-D104768A1214", BLEWrite, 20); // TODO: const vs. hard-coded
 BLEUnsignedIntCharacteristic timeCharacteristic("19B10015-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
+BLEIntCharacteristic tempCharacteristic("19B10016-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
+BLECharacteristic weatherCharacteristic("19B10017-E8F2-537E-4F6C-D104768A1214", BLEWrite, 20); // TODO: const vs. hard-coded
+BLEUnsignedIntCharacteristic tweettimeCharacteristic("19B10018-E8F2-537E-4F6C-D104768A1214", BLERead | BLEWrite);
+BLECharacteristic tweetuserCharacteristic("19B10019-E8F2-537E-4F6C-D104768A1214", BLEWrite, 20); // TODO: const vs. hard-coded
+BLECharacteristic tweetmsgCharacteristic("19B10020-E8F2-537E-4F6C-D104768A1214", BLEWrite, 20); // TODO: const vs. hard-coded
+BLECharacteristic notiheaderCharacteristic("19B10021-E8F2-537E-4F6C-D104768A1214", BLEWrite, 20); // TODO: const vs. hard-coded
+BLECharacteristic notimessageCharacteristic("19B10022-E8F2-537E-4F6C-D104768A1214", BLEWrite, 20); // TODO: const vs. hard-coded
+
+
 
 rgb_lcd lcd;
 
@@ -125,12 +134,30 @@ void setup() {
   messageCharacteristic.setEventHandler(BLEWritten, message_characteristic_callback);
   blePeripheral.addAttribute(timeCharacteristic);
   timeCharacteristic.setEventHandler(BLEWritten, time_characteristic_callback);
+  blePeripheral.addAttribute(tempCharacteristic);
+  tempCharacteristic.setEventHandler(BLEWritten, temp_characteristic_callback);
+  blePeripheral.addAttribute(weatherCharacteristic);
+  weatherCharacteristic.setEventHandler(BLEWritten, weather_characteristic_callback);
+  blePeripheral.addAttribute(tweettimeCharacteristic);
+  tweettimeCharacteristic.setEventHandler(BLEWritten, tweettime_characteristic_callback);
+  blePeripheral.addAttribute(tweetuserCharacteristic);
+  tweetuserCharacteristic.setEventHandler(BLEWritten, tweetuser_characteristic_callback);
+  blePeripheral.addAttribute(tweetmsgCharacteristic);
+  tweetmsgCharacteristic.setEventHandler(BLEWritten, tweetmsg_characteristic_callback);
+  blePeripheral.addAttribute(notiheaderCharacteristic);
+  notiheaderCharacteristic.setEventHandler(BLEWritten, notiheader_characteristic_callback);
+  blePeripheral.addAttribute(notimessageCharacteristic);
+  notimessageCharacteristic.setEventHandler(BLEWritten, notimessage_characteristic_callback);
+
 
   // (setting of RGB characteristic values moved to UpdateBacklightColor() )
 
 
   unsigned char buffer[20] = "";
   messageCharacteristic.setValue(buffer, 20); // TODO: actual value
+
+  weatherCharacteristic.setValue(weather_forecast, 20);
+  
 
   blePeripheral.begin();
 
@@ -260,6 +287,123 @@ void time_characteristic_callback(BLECentral &central, BLECharacteristic &charac
   
   // TODO: error checking?
   setTime(timeCharacteristic.value());
+}
+
+void temp_characteristic_callback(BLECentral &central, BLECharacteristic &characteristic) {
+  
+  // TODO: error checking?
+  outdoor_temperature_f = (float)tempCharacteristic.value();
+}
+
+void weather_characteristic_callback(BLECentral &central, BLECharacteristic &characteristic) {
+  
+  // TODO: error checking?
+  size_t message_length = weatherCharacteristic.valueLength();
+
+  // TODO: 17 -> const
+  // note that string literal *includes* \0 termination
+  memcpy(weather_forecast, "                ", 17); // cheap padding for now
+
+  // it's possible to receive messages longer than the LCD width
+  if (message_length > 16) {
+    // truncate for now
+    // TODO: handle longer messages via scrolling later...
+    // NOTE: characteristic limit is 20 bytes though...
+    message_length = 16;
+  };
+
+  // overwrite 16 or fewer chars (remaining stay ' ' to overwrite old on LCD)
+  memcpy(weather_forecast, weatherCharacteristic.value(), message_length);
+}
+
+void tweettime_characteristic_callback(BLECentral &central, BLECharacteristic &characteristic) {
+  
+  // TODO: error checking?
+  tweet_time = (float)tweettimeCharacteristic.value();
+}
+
+void tweetuser_characteristic_callback(BLECentral &central, BLECharacteristic &characteristic) {
+  
+  // TODO: error checking?
+  size_t message_length = tweetuserCharacteristic.valueLength();
+
+  // TODO: 17 -> const
+  // note that string literal *includes* \0 termination
+  memcpy(tweet_username, "                ", 17); // cheap padding for now
+
+  // it's possible to receive messages longer than the LCD width
+  if (message_length > 16) {
+    // truncate for now
+    // TODO: handle longer messages via scrolling later...
+    // NOTE: characteristic limit is 20 bytes though...
+    message_length = 16;
+  };
+
+  // overwrite 16 or fewer chars (remaining stay ' ' to overwrite old on LCD)
+  memcpy(tweet_username, tweetuserCharacteristic.value(), message_length);
+}
+
+void tweetmsg_characteristic_callback(BLECentral &central, BLECharacteristic &characteristic) {
+  
+  // TODO: error checking?
+  size_t message_length = tweetmsgCharacteristic.valueLength();
+
+  // TODO: 17 -> const
+  // note that string literal *includes* \0 termination
+  memcpy(tweet_message, "                ", 17); // cheap padding for now
+
+  // it's possible to receive messages longer than the LCD width
+  if (message_length > 16) {
+    // truncate for now
+    // TODO: handle longer messages via scrolling later...
+    // NOTE: characteristic limit is 20 bytes though...
+    message_length = 16;
+  };
+
+  // overwrite 16 or fewer chars (remaining stay ' ' to overwrite old on LCD)
+  memcpy(tweet_message, tweetmsgCharacteristic.value(), message_length);
+}
+
+void notiheader_characteristic_callback(BLECentral &central, BLECharacteristic &characteristic) {
+  
+  // TODO: error checking?
+  size_t message_length = notiheaderCharacteristic.valueLength();
+
+  // TODO: 17 -> const
+  // note that string literal *includes* \0 termination
+  memcpy(notification_header, "                ", 17); // cheap padding for now
+
+  // it's possible to receive messages longer than the LCD width
+  if (message_length > 16) {
+    // truncate for now
+    // TODO: handle longer messages via scrolling later...
+    // NOTE: characteristic limit is 20 bytes though...
+    message_length = 16;
+  };
+
+  // overwrite 16 or fewer chars (remaining stay ' ' to overwrite old on LCD)
+  memcpy(notification_header, notiheaderCharacteristic.value(), message_length);
+}
+
+void notimessage_characteristic_callback(BLECentral &central, BLECharacteristic &characteristic) {
+  
+  // TODO: error checking?
+  size_t message_length = notimessageCharacteristic.valueLength();
+
+  // TODO: 17 -> const
+  // note that string literal *includes* \0 termination
+  memcpy(notification_message, "                ", 17); // cheap padding for now
+
+  // it's possible to receive messages longer than the LCD width
+  if (message_length > 16) {
+    // truncate for now
+    // TODO: handle longer messages via scrolling later...
+    // NOTE: characteristic limit is 20 bytes though...
+    message_length = 16;
+  };
+
+  // overwrite 16 or fewer chars (remaining stay ' ' to overwrite old on LCD)
+  memcpy(notification_message, notimessageCharacteristic.value(), message_length);
 }
 
 
