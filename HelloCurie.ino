@@ -67,7 +67,7 @@ enum ui_states {
   TWEETS = 2,
   NOTIFICATIONS = 3,
   ALERT = 127,
-  DEBUG = 255
+  DEBUG = 255 // overflows back to HOME when incremented
 };
 // total "normal" states i.e. n/i ALERT or DEBUG
 static const byte ui_state_count = 4;
@@ -135,7 +135,7 @@ void setup() {
 
   // set up and turn on LED (max brightness)
   pinMode(led_pin, OUTPUT);
-  analogWrite(led_pin, 255);
+  analogWrite(led_pin, DEBUG);
 
 
   // set up LCD rows/cols
@@ -243,26 +243,32 @@ void loop() {
 }
 
 
-// callback function for incrementing UI state 
+// callback function for incrementing/setting UI state 
 void ui_cycle_isr() {
+  
+  last_state = current_state;
 
   // software debounce for when button triggers interrupt
-  // (no real value in anything faster)
-  if ((millis() - last_interrupt) > 500) {
+  if ((millis() - last_interrupt) > 100) {
         
     current_state++;
     if (current_state > (ui_state_count - 1)) {
       current_state = 0;
     }
-    // clear LCD when transitioning between states
-    // TODO: this if is redundant now, right? (in fact, last_state as a whole...?)
-    //if (current_state != last_state) {
-      lcd.clear();
-    //}
   
-    // not sure how long lcd.clear() takes (it's slow) but not worth counting that against interrupt time
-    last_interrupt = millis();
+  } else if ((millis() - last_interrupt) > 50) {
+    // debug mode on second very fast press (double-tap)
+    current_state = 255;
+    lcd.clear();
   }
+  // otherwise ignore as bounce
+
+  // clear LCD when transitioning between states
+  if (current_state != last_state) {
+    lcd.clear();
+  }
+  // not sure how long lcd.clear() takes (it's slow) but not worth counting that against interrupt time
+  last_interrupt = millis();
 
 }
 
@@ -292,8 +298,6 @@ void ShowState(byte ui_state) {
 
 
 void ShowHome() {
-  last_state = current_state;
-  current_state = HOME;
 
   // green background
   
@@ -353,10 +357,8 @@ void ShowHome() {
 
 
 void ShowWeather() {
-  last_state = current_state;
-  current_state = WEATHER;
 
-  // green background
+  // orange background
   
   color_r = 255;
   color_g = 69;
@@ -390,8 +392,6 @@ void ShowWeather() {
 
 
 void ShowTweets() {
-  last_state = current_state;
-  current_state = TWEETS;
 
   // Twitter blue background (#00aced)
   
@@ -409,8 +409,6 @@ void ShowTweets() {
 
 
 void ShowNotifications() {
-  last_state = current_state;
-  current_state = NOTIFICATIONS;
 
   // red background
   
@@ -430,13 +428,9 @@ void ShowNotifications() {
 
 
 void ShowDebug() {
-  last_state = current_state;
-  current_state = DEBUG;
-
-  // re-randomize backlight on first run
-  if (current_state != last_state) {
-    SetRandomBacklightColor();
-  }
+  
+  // re-randomize backlight on EVERY run
+  SetRandomBacklightColor();
 
   float ax, ay, az;   //scaled accelerometer values
 
