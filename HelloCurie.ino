@@ -59,6 +59,19 @@ static byte color_r = 0;
 static byte color_g = 0;
 static byte color_b = 0;
 
+// weather
+static float outdoor_temperature_f = 0;
+static unsigned char weather_forecast[17] = "no weather (@.@)";
+
+// tweets
+static unsigned int tweet_time = 0;
+static unsigned char tweet_username[17] = "@nobody         ";
+static unsigned char tweet_message[17] = "no tweets  (o_O)";
+
+// notifications
+static unsigned char notification_header[17] = "no notifications";
+static unsigned char notification_message[17] = "           (T-T)";
+
 
 //enum ui_states byte {
 enum ui_states {
@@ -380,24 +393,27 @@ void ShowWeather() {
 
   // get temp via IMU due to issues with Grove sensor
   // see also https://github.com/01org/corelibs-arduino101/blob/master/libraries/CurieIMU/src/BMI160.cpp#L2302
-  float temperature = CurieIMU.readTemperature();
-  float temperature_c = (temperature / 512.0) + 23;
-  float temperature_f = temperature_c * 9 / 5 + 32;
+  float indoor_temperature = CurieIMU.readTemperature();
+  float indoor_temperature_c = (indoor_temperature / 512.0) + 23;
+  float indoor_temperature_f = indoor_temperature_c * 9 / 5 + 32;
 
-  char indoor_f[5] = "DD F";
+  char indoor_f[9] = "in:?? F ";
   lcd.setCursor(0, 0);
-  sprintf(indoor_f, "%02.0f%cF", temperature_f, (char)0b11011111); // °
+  sprintf(indoor_f, "in:%02.0f%cF ", indoor_temperature_f, (char)0b11011111); // °
   // see 12. Font Table in https://seeeddoc.github.io/Grove-LCD_RGB_Backlight/res/JHD1214Y_YG_1.0.pdf for supported chars
   lcd.print(indoor_f);
 
   // OUTDOOR
-  char outdoor_f[5] = "DD F";
-  lcd.setCursor(12, 0);
-  sprintf(outdoor_f, "84%cF", (char)0b11011111); // °
+  char outdoor_f[9] = "out:?? F";
+  lcd.setCursor(8, 0);
+  // only display if set
+  if (outdoor_temperature_f != 0) {
+    sprintf(outdoor_f, "out:%02.0f%cF", outdoor_temperature_f, (char)0b11011111); // °    
+  }
   lcd.print(outdoor_f);
   
   lcd.setCursor(0, 1);
-  lcd.print("Overcast   (-_-)");
+  lcd.print((const char *) weather_forecast);
 }
 
 
@@ -412,9 +428,25 @@ void ShowTweets() {
   UpdateBacklightColor();
 
   lcd.setCursor(0, 0);
-  lcd.print("@ishjr        2m");
+  lcd.print((const char *) tweet_username);
+  
+  // will truncate long username, and not fit if >= 16.67 hours old but that's fine for PoC
+  // only display if set
+  // TODO: should check RTC is set too really? (though technically < 1000 check will catch due to overflow?)
+  if (tweet_time > 0) {
+    lcd.setCursor(12, 0);
+    char tweet_time_elapsed[5] = "999m";
+    int tweet_delta = now() - tweet_time;
+    // epoch time comparison = seconds elapsed
+    tweet_delta = tweet_delta / 60;
+    if (tweet_delta < 1000) {
+      sprintf(tweet_time_elapsed, "%dm", tweet_delta);
+    }
+    lcd.print(tweet_time_elapsed);
+  }
+
   lcd.setCursor(0, 1);
-  lcd.print("Hackster rocks! ");
+  lcd.print((const char *) tweet_message);
 }
 
 
@@ -429,11 +461,10 @@ void ShowNotifications() {
   UpdateBacklightColor();
 
   // TODO: custom chars for email etc. w/b cool!
-  
   lcd.setCursor(0, 0);
-  lcd.print("[E] Adam Benzion");
+  lcd.print((const char *) notification_header);
   lcd.setCursor(0, 1);
-  lcd.print("Congratulations!");
+  lcd.print((const char *) notification_message);
 }
 
 
